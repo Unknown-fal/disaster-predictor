@@ -14,7 +14,7 @@ def scale_to_percent(value, danger_level):
     percent = (value / danger_level) * 100
     return min(percent, 100)
 
-def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior):
+def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior, near_ocean):
     probs = {}
 
     # Flood risk
@@ -33,19 +33,19 @@ def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed,
     # Cyclone risk
     cyclone_wind = scale_to_percent(wind_speed, 150)
     cyclone_water = 20 if near_water else 0
-    probs["Cyclone"] = min(cyclone_wind + cyclone_water, 100)
+    probs["Cyclone"] = min(cyclone_wind + cyclone_water, 100) if (near_ocean) else 1
 
     # Heatwave risk
     if temp <= 35:
         probs["Heatwave"] = 20
-    elif temp >= 55:
+    elif temp >= 45:
         probs["Heatwave"] = 100
     else:
         extra_risk = ((temp - 35) / (55 - 35)) * (100 - 20)
         probs["Heatwave"] = 20 + extra_risk
 
     # Earthquake risk (placeholder)
-    probs["Earthquake"] = 10 if (snakes_insects or animal_behavior) else 1
+    probs["Earthquake"] = 20 if (snakes_insects or animal_behavior) else 1
 
     return probs
 
@@ -57,14 +57,16 @@ st.markdown("Fill in the details below to estimate the probability of natural di
 
 # Inputs
 near_water = st.checkbox("Is there a water body nearby?")
-temp = st.number_input("Current Temperature (°C)", min_value=-10.0, max_value=60.0, value=30.0)
+temp = st.number_input("Current Temperature (°C)", min_value=-80.0, max_value=60.0, value=30.0)
 snakes_insects = st.checkbox("Are you seeing snakes or insects unusually?")
-wind_speed = st.number_input("Wind Speed (km/h)", min_value=0.0, max_value=200.0, value=10.0)
+wind_speed = st.number_input("Wind Speed (km/h)", min_value=0.0, max_value=400.0, value=10.0)
 rainfall_last_7_days = st.number_input("Rainfall in last 7 days (mm)", min_value=0.0, max_value=1000.0, value=50.0)
 animal_behavior = st.checkbox("Are animals behaving unusually?")
+month = st.number_input("Which month is going on?", min_value=1, max_value=12, value=6)
+near_ocean = st.checkbox("Are you living on the coast?")
 
 if st.button("Predict"):
-    probs = predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior)
+    probs = predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior, near_ocean)
 
     st.subheader("Estimated Probabilities:")
     for disaster, chance in probs.items():
