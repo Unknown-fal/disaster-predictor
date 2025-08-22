@@ -14,7 +14,7 @@ def scale_to_percent(value, danger_level):
     percent = (value / danger_level) * 100
     return min(percent, 100)
 
-def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior, near_ocean):
+def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior, near_ocean, month):
     probs = {}
 
     # Flood risk
@@ -28,24 +28,25 @@ def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed,
     else:
         heat_component = 0 if temp <= 32 else min(((temp - 32) / (45 - 32)) * 100, 100)
         rain_component = min(((20 - max(rainfall_last_7_days, 0)) / 20) * 100, 100)
+        month_component = month if month <= 7 else 0
         probs["Drought"] = min(0.5 * heat_component + 0.5 * rain_component, 100)
 
     # Cyclone risk
     cyclone_wind = scale_to_percent(wind_speed, 150)
     cyclone_water = 20 if near_water else 0
-    probs["Cyclone"] = min(cyclone_wind + cyclone_water, 100) if (near_ocean) else 1
+    probs["Cyclone"] = min(cyclone_wind + cyclone_water, 100) if (near_ocean) else 0
 
     # Heatwave risk
-    if temp <= 35:
+    if temp <= 35 and month <= 4:
         probs["Heatwave"] = 20
-    elif temp >= 45:
+    elif temp >= 45 and month <=4:
         probs["Heatwave"] = 100
     else:
         extra_risk = ((temp - 35) / (55 - 35)) * (100 - 20)
-        probs["Heatwave"] = 20 + extra_risk
+        probs["Heatwave"] = 20 + extra_risk if (month <= 4) else 100 - extra_risk
 
     # Earthquake risk (placeholder)
-    probs["Earthquake"] = 20 if (snakes_insects or animal_behavior) else 1
+    probs["Earthquake"] = 20 if (snakes_insects or animal_behavior) else 5
 
     return probs
 
@@ -53,7 +54,7 @@ def predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed,
 # ---------------- STREAMLIT APP ----------------
 st.title("🌍 Natural Disaster Risk Assessment")
 
-st.markdown("Fill in the details below to estimate the probability of natural disasters:")
+st.markdown("Get the probability of a disaster occuring in a few simple steps!")
 
 # Inputs
 near_water = st.checkbox("Is there a water body nearby?")
@@ -65,10 +66,11 @@ animal_behavior = st.checkbox("Are animals behaving unusually?")
 month = st.number_input("Which month is going on?", min_value=1, max_value=12, value=6)
 near_ocean = st.checkbox("Are you living on the coast?")
 
-if st.button("Predict"):
-    probs = predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior, near_ocean)
+if st.button("Get Probabilities"):
+    probs = predict_disaster_probabilities(near_water, temp, snakes_insects, wind_speed, rainfall_last_7_days, animal_behavior, near_ocean, month)
 
     st.subheader("Estimated Probabilities:")
     for disaster, chance in probs.items():
-        if chance > 1:
+        if chance >= 0:
             st.write(f"**{disaster}:** {chance:.1f}% chance")
+st.caption("An initiative by the students of The Indian School.")
